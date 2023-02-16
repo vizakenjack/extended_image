@@ -27,6 +27,7 @@ class ExtendedImageSlidePage extends StatefulWidget {
     this.resetPageDuration = const Duration(milliseconds: 500),
     this.slideType = SlideType.onlyImage,
     this.onSlidingPage,
+    this.canSlidePage,
     Key? key,
   }) : super(key: key);
 
@@ -58,6 +59,10 @@ class ExtendedImageSlidePage extends StatefulWidget {
 
   /// on sliding page
   final OnSlidingPage? onSlidingPage;
+
+  ///  Whether we can slide page
+  final CanSlidePage? canSlidePage;
+
   @override
   ExtendedImageSlidePageState createState() => ExtendedImageSlidePageState();
 }
@@ -79,19 +84,15 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
   Animation<double>? _backScaleAnimation;
   Animation<double>? get backScaleAnimation => _backScaleAnimation;
   Offset _offset = Offset.zero;
-  Offset get offset => _backAnimationController.isAnimating
-      ? _backOffsetAnimation!.value
-      : _offset;
+  Offset get offset => _backAnimationController.isAnimating ? _backOffsetAnimation!.value : _offset;
   double _scale = 1.0;
-  double get scale =>
-      _backAnimationController.isAnimating ? backScaleAnimation!.value : _scale;
+  double get scale => _backAnimationController.isAnimating ? backScaleAnimation!.value : _scale;
   bool _popping = false;
 
   @override
   void initState() {
     super.initState();
-    _backAnimationController =
-        AnimationController(vsync: this, duration: widget.resetPageDuration);
+    _backAnimationController = AnimationController(vsync: this, duration: widget.resetPageDuration);
     _backAnimationController.addListener(_backAnimation);
   }
 
@@ -107,8 +108,7 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
   }
 
   ExtendedImageGestureState? _extendedImageGestureState;
-  ExtendedImageGestureState? get imageGestureState =>
-      _extendedImageGestureState;
+  ExtendedImageGestureState? get imageGestureState => _extendedImageGestureState;
   ExtendedImageSlidePageHandlerState? _extendedImageSlidePageHandlerState;
   void _backAnimation() {
     if (mounted) {
@@ -135,6 +135,10 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
   void slide(Offset value,
       {ExtendedImageGestureState? extendedImageGestureState,
       ExtendedImageSlidePageHandlerState? extendedImageSlidePageHandlerState}) {
+    if (widget.canSlidePage?.call(extendedImageGestureState) == false) {
+      return;
+    }
+
     if (_backAnimationController.isAnimating) {
       return;
     }
@@ -162,9 +166,7 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
           state: this,
         ) ??
         defaultSlideScaleHandler(
-            offset: _offset,
-            pageSize: pageSize,
-            pageGestureAxis: widget.slideAxis);
+            offset: _offset, pageSize: pageSize, pageGestureAxis: widget.slideAxis);
 
     //if (_scale != 1.0 || _offset != Offset.zero)
     {
@@ -203,10 +205,10 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
       } else {
         //_isSliding=false;
         if (_offset != Offset.zero || _scale != 1.0) {
-          _backOffsetAnimation = _backAnimationController
-              .drive(Tween<Offset>(begin: _offset, end: Offset.zero));
-          _backScaleAnimation = _backAnimationController
-              .drive(Tween<double>(begin: _scale, end: 1.0));
+          _backOffsetAnimation =
+              _backAnimationController.drive(Tween<Offset>(begin: _offset, end: Offset.zero));
+          _backScaleAnimation =
+              _backAnimationController.drive(Tween<double>(begin: _scale, end: 1.0));
           _offset = Offset.zero;
           _scale = 1.0;
           _backAnimationController.reset();
@@ -223,13 +225,12 @@ class ExtendedImageSlidePageState extends State<ExtendedImageSlidePage>
   @override
   Widget build(BuildContext context) {
     _pageSize = MediaQuery.of(context).size;
-    final Color pageColor =
-        widget.slidePageBackgroundHandler?.call(offset, pageSize) ??
-            defaultSlidePageBackgroundHandler(
-                offset: offset,
-                pageSize: pageSize,
-                color: Theme.of(context).dialogBackgroundColor,
-                pageGestureAxis: widget.slideAxis);
+    final Color pageColor = widget.slidePageBackgroundHandler?.call(offset, pageSize) ??
+        defaultSlidePageBackgroundHandler(
+            offset: offset,
+            pageSize: pageSize,
+            color: Theme.of(context).dialogBackgroundColor,
+            pageGestureAxis: widget.slideAxis);
 
     Widget? result = widget.child;
     if (widget.slideType == SlideType.wholePage) {
