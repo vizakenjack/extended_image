@@ -54,6 +54,7 @@ class ExtendedImage extends StatefulWidget {
     this.extendedImageGestureKey,
     this.isAntiAlias = false,
     this.handleLoadingProgress = false,
+    this.layoutInsets = EdgeInsets.zero,
   })  : assert(constraints == null || constraints.debugAssertIsValid()),
         constraints = (width != null || height != null)
             ? constraints?.tighten(width: width, height: height) ??
@@ -233,6 +234,7 @@ class ExtendedImage extends StatefulWidget {
     int? maxBytes,
     bool cacheRawData = false,
     String? imageCacheName,
+    this.layoutInsets = EdgeInsets.zero,
   })  : assert(cacheWidth == null || cacheWidth > 0),
         assert(cacheHeight == null || cacheHeight > 0),
         image = ExtendedResizeImage.resizeIfNeeded(
@@ -329,6 +331,7 @@ class ExtendedImage extends StatefulWidget {
     int? maxBytes,
     bool cacheRawData = false,
     String? imageCacheName,
+    this.layoutInsets = EdgeInsets.zero,
   })  :
         // FileImage is not supported on Flutter Web therefore neither this method.
         assert(
@@ -419,6 +422,7 @@ class ExtendedImage extends StatefulWidget {
     int? maxBytes,
     bool cacheRawData = false,
     String? imageCacheName,
+    this.layoutInsets = EdgeInsets.zero,
   })  : assert(cacheWidth == null || cacheWidth > 0),
         assert(cacheHeight == null || cacheHeight > 0),
         image = ExtendedResizeImage.resizeIfNeeded(
@@ -497,6 +501,7 @@ class ExtendedImage extends StatefulWidget {
     bool cacheRawData = false,
     String? imageCacheName,
     Duration? cacheMaxAge,
+    this.layoutInsets = EdgeInsets.zero,
   })  : assert(cacheWidth == null || cacheWidth > 0),
         assert(cacheHeight == null || cacheHeight > 0),
         image = ExtendedResizeImage.resizeIfNeeded(
@@ -794,6 +799,11 @@ class ExtendedImage extends StatefulWidget {
   /// Anti-aliasing alleviates the sawtooth artifact when the image is rotated.
   final bool isAntiAlias;
 
+  /// Insets to apply before laying out the image.
+  ///
+  /// The image will still be painted in the full area.
+  final EdgeInsets layoutInsets;
+
   @override
   _ExtendedImageState createState() => _ExtendedImageState();
   @override
@@ -822,7 +832,48 @@ class ExtendedImage extends StatefulWidget {
     properties.add(DiagnosticsProperty<bool>(
         'this.excludeFromSemantics', excludeFromSemantics));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality));
+    properties
+        .add(DiagnosticsProperty<EdgeInsets>('layoutInsets', layoutInsets));
   }
+
+  /// default state widget builder
+  static Widget Function(
+    BuildContext context,
+    ExtendedImageState state,
+  ) globalStateWidgetBuilder = (
+    BuildContext context,
+    ExtendedImageState state,
+  ) {
+    switch (state.extendedImageLoadState) {
+      case LoadState.loading:
+        return Container(
+          alignment: Alignment.center,
+          child: Theme.of(context).platform == TargetPlatform.iOS
+              ? const CupertinoActivityIndicator(
+                  animating: true,
+                  radius: 16.0,
+                )
+              : CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).primaryColor),
+                ),
+        );
+
+      case LoadState.completed:
+        return state.completedWidget;
+      case LoadState.failed:
+        return Container(
+          alignment: Alignment.center,
+          child: GestureDetector(
+            onTap: () {
+              state.reLoadImage();
+            },
+            child: const Text('Failed to load image'),
+          ),
+        );
+    }
+  };
 }
 
 class _ExtendedImageState extends State<ExtendedImage>
@@ -899,28 +950,7 @@ class _ExtendedImageState extends State<ExtendedImage>
 
     if (current == null) {
       if (widget.enableLoadState) {
-        switch (_loadState) {
-          case LoadState.loading:
-            current = Container(
-              alignment: Alignment.center,
-              child: _getIndicator(context),
-            );
-            break;
-          case LoadState.completed:
-            current = _getCompletedWidget();
-            break;
-          case LoadState.failed:
-            current = Container(
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: () {
-                  reLoadImage();
-                },
-                child: const Text('Failed to load image'),
-              ),
-            );
-            break;
-        }
+        current = ExtendedImage.globalStateWidgetBuilder(context, this);
       } else {
         if (_loadState == LoadState.completed) {
           current = _getCompletedWidget();
@@ -1125,6 +1155,7 @@ class _ExtendedImageState extends State<ExtendedImage>
       filterQuality: widget.filterQuality,
       beforePaintImage: widget.beforePaintImage,
       afterPaintImage: widget.afterPaintImage,
+      layoutInsets: widget.layoutInsets,
     );
   }
 
@@ -1144,19 +1175,6 @@ class _ExtendedImageState extends State<ExtendedImage>
       current = _buildExtendedRawImage();
     }
     return current;
-  }
-
-  Widget _getIndicator(BuildContext context) {
-    return Theme.of(context).platform == TargetPlatform.iOS
-        ? const CupertinoActivityIndicator(
-            animating: true,
-            radius: 16.0,
-          )
-        : CircularProgressIndicator(
-            strokeWidth: 2.0,
-            valueColor:
-                AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
-          );
   }
 
   ImageStreamListener _getListener({bool recreateListener = false}) {

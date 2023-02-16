@@ -41,6 +41,7 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
     this.editActionDetails,
     this.isAntiAlias = false,
     this.debugImageLabel,
+    this.layoutInsets = EdgeInsets.zero,
   }) : super(key: key);
 
   @override
@@ -53,6 +54,7 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
         'needed it.');
     return ExtendedRenderImage(
       image: image?.clone(),
+      debugImageLabel: debugImageLabel,
       width: width,
       height: height,
       scale: scale,
@@ -75,6 +77,7 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
       gestureDetails: gestureDetails,
       editActionDetails: editActionDetails,
       isAntiAlias: isAntiAlias,
+      layoutInsets: layoutInsets,
     );
   }
 
@@ -227,6 +230,12 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
 
   /// A string identifying the source of the image.
   final String? debugImageLabel;
+
+  /// Insets to apply before laying out the image.
+  ///
+  /// The image will still be painted in the full area.
+  final EdgeInsets layoutInsets;
+
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
@@ -250,6 +259,8 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
         value: matchTextDirection, ifTrue: 'match text direction'));
     properties.add(DiagnosticsProperty<bool>('invertColors', invertColors));
     properties.add(EnumProperty<FilterQuality>('filterQuality', filterQuality));
+    properties
+        .add(DiagnosticsProperty<EdgeInsets>('layoutInsets', layoutInsets));
   }
 
   @override
@@ -261,6 +272,7 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
         'needed it.');
     renderObject
       ..image = image?.clone()
+      ..debugImageLabel = debugImageLabel
       ..width = width
       ..height = height
       ..scale = scale
@@ -282,7 +294,8 @@ class ExtendedRawImage extends LeafRenderObjectWidget {
       ..sourceRect = sourceRect
       ..gestureDetails = gestureDetails
       ..editActionDetails = editActionDetails
-      ..isAntiAlias = isAntiAlias;
+      ..isAntiAlias = isAntiAlias
+      ..layoutInsets = layoutInsets;
   }
 
   @override
