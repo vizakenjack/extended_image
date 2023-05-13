@@ -544,7 +544,6 @@ abstract class ExtendedDragGestureRecognizer extends OneSequenceGestureRecognize
         localPosition: _initialPosition.local,
         kind: getKindForPointer(pointer),
       );
-
       invokeCallback<void>('onStart', () => onStart!(details));
     }
   }
@@ -623,5 +622,261 @@ abstract class ExtendedDragGestureRecognizer extends OneSequenceGestureRecognize
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(EnumProperty<DragStartBehavior>('start behavior', dragStartBehavior));
+  }
+}
+
+/// Recognizes movement in the vertical direction.
+///
+/// Used for vertical scrolling.
+///
+/// See also:
+///
+///  * [_HorizontalDragGestureRecognizer], for a similar recognizer but for
+///    horizontal movement.
+///  * [MultiDragGestureRecognizer], for a family of gesture recognizers that
+///    track each touch point independently.
+class _VerticalDragGestureRecognizer extends _DragGestureRecognizer {
+  /// Create a gesture recognizer for interactions in the vertical axis.
+  ///
+  /// {@macro flutter.gestures.GestureRecognizer.supportedDevices}
+  _VerticalDragGestureRecognizer({
+    super.debugOwner,
+    super.supportedDevices,
+    super.allowedButtonsFilter,
+  });
+
+  @override
+  bool isFlingGesture(VelocityEstimate estimate, PointerDeviceKind kind) {
+    final double minVelocity = minFlingVelocity ?? kMinFlingVelocity;
+    final double minDistance = minFlingDistance ?? computeHitSlop(kind, gestureSettings);
+    return estimate.pixelsPerSecond.dy.abs() > minVelocity &&
+        estimate.offset.dy.abs() > minDistance;
+  }
+
+  @override
+  DragEndDetails? _considerFling(VelocityEstimate estimate, PointerDeviceKind kind) {
+    if (!isFlingGesture(estimate, kind)) {
+      return null;
+    }
+    final double maxVelocity = maxFlingVelocity ?? kMaxFlingVelocity;
+    final double dy = clampDouble(estimate.pixelsPerSecond.dy, -maxVelocity, maxVelocity);
+    return DragEndDetails(
+      velocity: Velocity(pixelsPerSecond: Offset(0, dy)),
+      primaryVelocity: dy,
+    );
+  }
+
+  @override
+  bool _hasSufficientGlobalDistanceToAccept(
+      PointerDeviceKind pointerDeviceKind, double? deviceTouchSlop) {
+    return _globalDistanceMoved.abs() > computeHitSlop(pointerDeviceKind, gestureSettings);
+  }
+
+  @override
+  Offset _getDeltaForDetails(Offset delta) => Offset(0.0, delta.dy);
+
+  @override
+  double _getPrimaryValueFromOffset(Offset value) => value.dy;
+
+  @override
+  String get debugDescription => 'vertical drag';
+}
+
+/// Recognizes movement in the horizontal direction.
+///
+/// Used for horizontal scrolling.
+///
+/// See also:
+///
+///  * [_VerticalDragGestureRecognizer], for a similar recognizer but for
+///    vertical movement.
+///  * [MultiDragGestureRecognizer], for a family of gesture recognizers that
+///    track each touch point independently.
+class _HorizontalDragGestureRecognizer extends _DragGestureRecognizer {
+  /// Create a gesture recognizer for interactions in the horizontal axis.
+  ///
+  /// {@macro flutter.gestures.GestureRecognizer.supportedDevices}
+  _HorizontalDragGestureRecognizer({
+    super.debugOwner,
+    super.supportedDevices,
+    super.allowedButtonsFilter,
+  });
+
+  @override
+  bool isFlingGesture(VelocityEstimate estimate, PointerDeviceKind kind) {
+    final double minVelocity = minFlingVelocity ?? kMinFlingVelocity;
+    final double minDistance = minFlingDistance ?? computeHitSlop(kind, gestureSettings);
+    return estimate.pixelsPerSecond.dx.abs() > minVelocity &&
+        estimate.offset.dx.abs() > minDistance;
+  }
+
+  @override
+  DragEndDetails? _considerFling(VelocityEstimate estimate, PointerDeviceKind kind) {
+    if (!isFlingGesture(estimate, kind)) {
+      return null;
+    }
+    final double maxVelocity = maxFlingVelocity ?? kMaxFlingVelocity;
+    final double dx = clampDouble(estimate.pixelsPerSecond.dx, -maxVelocity, maxVelocity);
+    return DragEndDetails(
+      velocity: Velocity(pixelsPerSecond: Offset(dx, 0)),
+      primaryVelocity: dx,
+    );
+  }
+
+  @override
+  bool _hasSufficientGlobalDistanceToAccept(
+      PointerDeviceKind pointerDeviceKind, double? deviceTouchSlop) {
+    return _globalDistanceMoved.abs() > computeHitSlop(pointerDeviceKind, gestureSettings);
+  }
+
+  @override
+  Offset _getDeltaForDetails(Offset delta) => Offset(delta.dx, 0.0);
+
+  @override
+  double _getPrimaryValueFromOffset(Offset value) => value.dx;
+
+  @override
+  String get debugDescription => 'horizontal drag';
+}
+
+class _PointAtTime {
+  const _PointAtTime(this.point, this.time);
+
+  final Duration time;
+  final Offset point;
+
+  @override
+  String toString() => '_PointAtTime($point at $time)';
+}
+
+// Computes a pointer's velocity based on data from [PointerMoveEvent]s.
+///
+/// The input data is provided by calling [addPosition]. Adding data is cheap.
+///
+/// To obtain a velocity, call [getVelocity] or [getVelocityEstimate]. This will
+/// compute the velocity based on the data added so far. Only call these when
+/// you need to use the velocity, as they are comparatively expensive.
+///
+/// The quality of the velocity estimation will be better if more data points
+/// have been received.
+class _VelocityTracker extends VelocityTracker {
+  /// Create a new velocity tracker for a pointer [kind].
+  _VelocityTracker.withKind(this.kind) : super.withKind(kind);
+
+  static const int _assumePointerMoveStoppedMilliseconds = 40;
+  static const int _historySize = 20;
+  static const int _horizonMilliseconds = 100;
+  static const int _minSampleSize = 3;
+
+  /// The kind of pointer this tracker is for.
+  @override
+  final PointerDeviceKind kind;
+
+  // Circular buffer; current sample at _index.
+  final List<_PointAtTime?> _samples = List<_PointAtTime?>.filled(_historySize, null);
+  int _index = 0;
+
+  /// Adds a position as the given time to the tracker.
+  @override
+  void addPosition(Duration time, Offset position) {
+    _index += 1;
+    if (_index == _historySize) {
+      _index = 0;
+    }
+    _samples[_index] = _PointAtTime(position, time);
+  }
+
+  /// Returns an estimate of the velocity of the object being tracked by the
+  /// tracker given the current information available to the tracker.
+  ///
+  /// Information is added using [addPosition].
+  ///
+  /// Returns null if there is no data on which to base an estimate.
+  @override
+  VelocityEstimate? getVelocityEstimate() {
+    final List<double> x = <double>[];
+    final List<double> y = <double>[];
+    final List<double> w = <double>[];
+    final List<double> time = <double>[];
+    int sampleCount = 0;
+    int index = _index;
+
+    final _PointAtTime? newestSample = _samples[index];
+    if (newestSample == null) {
+      return null;
+    }
+
+    _PointAtTime previousSample = newestSample;
+    _PointAtTime oldestSample = newestSample;
+
+    // Starting with the most recent PointAtTime sample, iterate backwards while
+    // the samples represent continuous motion.
+    do {
+      final _PointAtTime? sample = _samples[index];
+      if (sample == null) {
+        break;
+      }
+
+      final double age = (newestSample.time - sample.time).inMicroseconds.toDouble() / 1000;
+      final double delta =
+          (sample.time - previousSample.time).inMicroseconds.abs().toDouble() / 1000;
+      previousSample = sample;
+      if (age > _horizonMilliseconds || delta > _assumePointerMoveStoppedMilliseconds) {
+        break;
+      }
+
+      oldestSample = sample;
+      final Offset position = sample.point;
+      x.add(position.dx);
+      y.add(position.dy);
+      w.add(1.0);
+      time.add(-age);
+      index = (index == 0 ? _historySize : index) - 1;
+
+      sampleCount += 1;
+    } while (sampleCount < _historySize);
+
+    if (sampleCount >= _minSampleSize) {
+      final LeastSquaresSolver xSolver = LeastSquaresSolver(time, x, w);
+      final PolynomialFit? xFit = xSolver.solve(2);
+      if (xFit != null) {
+        final LeastSquaresSolver ySolver = LeastSquaresSolver(time, y, w);
+        final PolynomialFit? yFit = ySolver.solve(2);
+        if (yFit != null) {
+          return VelocityEstimate(
+            // convert from pixels/ms to pixels/s
+            pixelsPerSecond: Offset(xFit.coefficients[1] * 1000, yFit.coefficients[1] * 1000),
+            confidence: xFit.confidence * yFit.confidence,
+            duration: newestSample.time - oldestSample.time,
+            offset: newestSample.point - oldestSample.point,
+          );
+        }
+      }
+    }
+
+    // We're unable to make a velocity estimate but we did have at least one
+    // valid pointer position.
+    return VelocityEstimate(
+      pixelsPerSecond: Offset.zero,
+      confidence: 1.0,
+      duration: newestSample.time - oldestSample.time,
+      offset: newestSample.point - oldestSample.point,
+    );
+  }
+
+  /// Computes the velocity of the pointer at the time of the last
+  /// provided data point.
+  ///
+  /// This can be expensive. Only call this when you need the velocity.
+  ///
+  /// Returns [Velocity.zero] if there is no data from which to compute an
+  /// estimate or if the estimated velocity is zero.
+  @override
+  Velocity getVelocity() {
+    final VelocityEstimate? estimate = getVelocityEstimate();
+    if (estimate == null || estimate.pixelsPerSecond == Offset.zero) {
+      return Velocity.zero;
+    }
+    return Velocity(pixelsPerSecond: estimate.pixelsPerSecond);
   }
 }
