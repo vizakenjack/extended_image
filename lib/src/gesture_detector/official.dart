@@ -395,8 +395,7 @@ abstract class _DragGestureRecognizer extends DragGestureRecognizer {
                     untransformedEndPosition: localPosition)
                 .distance *
             (_getPrimaryValueFromOffset(movedLocally) ?? 1).sign;
-        if (_hasSufficientGlobalDistanceToAccept(
-            event.kind, gestureSettings?.touchSlop)) {
+        if (_hasSufficientGlobalDistanceToAccept(event.kind, gestureSettings?.touchSlop)) {
           _hasDragThresholdBeenMet = true;
           if (_acceptedActivePointers.contains(event.pointer)) {
             _checkDrag(event.pointer);
@@ -490,17 +489,14 @@ abstract class _DragGestureRecognizer extends DragGestureRecognizer {
     _lastTransform = null;
     _checkStart(timestamp, pointer);
     if (localUpdateDelta != Offset.zero && onUpdate != null) {
-      final Matrix4? localToGlobal =
-          transform != null ? Matrix4.tryInvert(transform) : null;
-      final Offset correctedLocalPosition =
-          _initialPosition.local + localUpdateDelta;
+      final Matrix4? localToGlobal = transform != null ? Matrix4.tryInvert(transform) : null;
+      final Offset correctedLocalPosition = _initialPosition.local + localUpdateDelta;
       final Offset globalUpdateDelta = PointerEvent.transformDeltaViaPositions(
         untransformedEndPosition: correctedLocalPosition,
         untransformedDelta: localUpdateDelta,
         transform: localToGlobal,
       );
-      final OffsetPair updateDelta =
-          OffsetPair(local: localUpdateDelta, global: globalUpdateDelta);
+      final OffsetPair updateDelta = OffsetPair(local: localUpdateDelta, global: globalUpdateDelta);
       final OffsetPair correctedPosition =
           _initialPosition + updateDelta; // Only adds delta for down behaviour
       _checkUpdate(
@@ -802,12 +798,8 @@ class _VelocityTracker extends VelocityTracker {
       final double delta =
           (sample.time - previousSample.time).inMicroseconds.abs().toDouble() / 1000;
       previousSample = sample;
-<<<<<<< HEAD
-      if (age > _horizonMilliseconds || delta > _assumePointerMoveStoppedMilliseconds) {
-=======
       if (age > _horizonMilliseconds ||
           delta > _VelocityTracker._assumePointerMoveStoppedMilliseconds) {
->>>>>>> ccc16f28525b8ab06ba6b41f69a370278014c9cf
         break;
       }
 
@@ -820,7 +812,7 @@ class _VelocityTracker extends VelocityTracker {
       index = (index == 0 ? _historySize : index) - 1;
 
       sampleCount += 1;
-    } while (sampleCount < _historySize) {}
+    } while (sampleCount < _historySize);
 
     if (sampleCount >= _minSampleSize) {
       final LeastSquaresSolver xSolver = LeastSquaresSolver(time, x, w);
@@ -865,5 +857,4 @@ class _VelocityTracker extends VelocityTracker {
     }
     return Velocity(pixelsPerSecond: estimate.pixelsPerSecond);
   }
-  return null;
 }

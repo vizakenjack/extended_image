@@ -76,3 +76,6 @@ build/
 pubspec.lock
 .env
 .vscode
+
+# FVM Version Cache
+.fvm/
