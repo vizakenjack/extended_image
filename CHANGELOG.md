@@ -1,3 +1,11 @@
+## 8.2.1
+
+* dart fix
+
+## 8.2.0
+
+* Migrate to 3.16.0 
+
 ## 8.1.1
 
 * Fix issue with onDragEnd
