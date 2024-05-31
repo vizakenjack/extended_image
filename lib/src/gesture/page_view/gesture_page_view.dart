@@ -47,7 +47,6 @@ class ExtendedImageGesturePageView extends StatefulWidget {
     this.onPageChanged,
     List<Widget> children = const <Widget>[],
     CanScrollPage? canScrollPage,
-    this.preloadPagesCount = 0,
   })  : controller = controller ?? _defaultPageController,
         childrenDelegate = SliverChildListDelegate(children),
         physics = physics != null
@@ -79,7 +78,6 @@ class ExtendedImageGesturePageView extends StatefulWidget {
     required IndexedWidgetBuilder itemBuilder,
     int? itemCount,
     CanScrollPage? canScrollPage,
-    this.preloadPagesCount = 0,
   })  : controller = controller ?? _defaultPageController,
         childrenDelegate =
             SliverChildBuilderDelegate(itemBuilder, childCount: itemCount),
@@ -101,7 +99,6 @@ class ExtendedImageGesturePageView extends StatefulWidget {
     this.onPageChanged,
     CanScrollPage? canScrollPage,
     required this.childrenDelegate,
-    this.preloadPagesCount = 0,
   })  : controller = controller ?? _defaultPageController,
         physics = _defaultScrollPhysics,
         canScrollPage = canScrollPage ?? _defaultCanScrollPage,
@@ -157,9 +154,6 @@ class ExtendedImageGesturePageView extends StatefulWidget {
   /// [childrenDelegate] that wraps the given [List] and [IndexedWidgetBuilder],
   /// respectively.
   final SliverChildDelegate childrenDelegate;
-
-  /// The count of pre-built pages
-  final int preloadPagesCount;
 
   @override
   ExtendedImageGesturePageViewState createState() =>
@@ -327,7 +321,6 @@ class ExtendedImageGesturePageViewState
       pageSnapping: widget.pageSnapping,
       physics: widget.physics,
       onPageChanged: widget.onPageChanged,
-      preloadPagesCount: widget.preloadPagesCount,
     );
 
     if (widget.physics.parent == null ||
@@ -430,10 +423,10 @@ class ExtendedImageGesturePageViewState
     // _drag might be null if the drag activity ended and called _disposeDrag.
     assert(_hold == null || _drag == null);
     if (!widget.canScrollPage(extendedImageGestureState?.gestureDetails)) {
-      _drag!.end(DragEndDetails(primaryVelocity: 0.0));
+      _drag?.end(DragEndDetails(primaryVelocity: 0.0));
       return;
     }
-    _drag!.end(details);
+    _drag?.end(details);
     assert(_drag == null);
     // return;
     // DragEndDetails temp = details;
