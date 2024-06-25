@@ -1,1 +1,3 @@
 Added canSlidePage
+
+Added http2 
